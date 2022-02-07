@@ -53,6 +53,8 @@
 #include "remote_config.h"
 #include "coap_client.h"
 
+#include "gui.h"
+
 
 // declarations
 otInstance *otGetInstance(void);
@@ -68,21 +70,19 @@ void remote_init(void)
 
   // test logging output and application alive state
   printf("Hello from the remote app_init\r\n");
+  gui_print_log("hello :)");
 
   // delete previous network information
   error = otInstanceErasePersistentInfo(otGetInstance());
-  printf(otThreadErrorToString(error));
-  printf("\r\n");
+  printf("erase persistent info: %s\r\n", otThreadErrorToString(error));
 
   // register callback for Thread Stack Events
   error = otSetStateChangedCallback(otGetInstance(), openthread_event_handler, (void *)otGetInstance());
-  printf(otThreadErrorToString(error));
-  printf("\r\n");
+  printf("set state changed callback: %s\r\n", otThreadErrorToString(error));
 
   // start network interface
   error = otIp6SetEnabled(otGetInstance(), true);
-  printf(otThreadErrorToString(error));
-  printf("\r\n");
+  printf("enable interface: %s\r\n", otThreadErrorToString(error));
 }
 
 
@@ -103,6 +103,7 @@ void openthread_event_handler(otChangedFlags event, void *aContext)
       if(netif_state)
       {
           printf("ready for join\r\n");
+          gui_print_log("press 'B' to join");
       }
   }
 
@@ -172,15 +173,19 @@ void sl_button_on_change(const sl_button_t *handle)
       {
           if(handle == &sl_button_btn0)
           {
+              gui_print_log("[coap]: tx ri");
               // send a message with some identifiable component
               coap_client_send_message(otGetInstance(), "right button");
           }
 
           if(handle == &sl_button_btn1)
           {
+              gui_print_log("[coap]: tx le");
               // send a message with some identifiable component
               coap_client_send_message(otGetInstance(), "left button");
           }
       }
   }
+
+  gui_button_handler(handle);
 }
