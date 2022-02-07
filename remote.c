@@ -40,6 +40,7 @@
 #include <openthread/platform/misc.h>
 
 #include <string.h>
+#include <stdlib.h>
 
 // Platform Drivers
 #include "sl_button.h"
@@ -110,12 +111,14 @@ void openthread_event_handler(otChangedFlags event, void *aContext)
   if(event & OT_CHANGED_THREAD_NETWORK_NAME)
   {
       printf("network name changed: %s\r\n", otThreadGetNetworkName(otGetInstance()));
+      gui_print_network_name(otThreadGetNetworkName(otGetInstance()));
   }
 
   if(event & OT_CHANGED_THREAD_ROLE)
   {
       otDeviceRole role = otThreadGetDeviceRole(otGetInstance());
       printf("Thread Device Role Changed: %s\r\n", otThreadDeviceRoleToString(role));
+      gui_print_device_role(otThreadDeviceRoleToString(role));
       if(role != OT_DEVICE_ROLE_DETACHED && role != OT_DEVICE_ROLE_DISABLED)
       {
           if(!is_commissioned)
@@ -127,6 +130,14 @@ void openthread_event_handler(otChangedFlags event, void *aContext)
       else {
           is_commissioned = false;
       }
+  }
+
+  if(event & OT_CHANGED_THREAD_CHANNEL)
+  {
+      otOperationalDataset otDataset;
+      otDatasetGetActive(otGetInstance(), &otDataset);
+
+      gui_print_network_channel(otDataset.mChannel);
   }
 }
 
@@ -145,6 +156,13 @@ void joiner_callback(otError aError, void *aContext)
       // > thread start
       otError error = otThreadSetEnabled(otGetInstance(), true);
       printf("thread start: %s\r\n", otThreadErrorToString(error));
+      gui_print_log("[joiner]: joined :)");
+  }
+  else
+  {
+      char temp[21];
+      snprintf((char *)&temp, 21, "[joiner]: %s", otThreadErrorToString(aError));
+      gui_print_log(temp);
   }
 }
 
@@ -164,6 +182,7 @@ void sl_button_on_change(const sl_button_t *handle)
               // start joiner
               error = otJoinerStart(otGetInstance(), JOINER_PSKD, NULL, NULL, NULL, NULL, NULL, joiner_callback, (void*)otGetInstance());
               printf("start_joiner: %s\r\n", otThreadErrorToString(error));
+              gui_print_log("[joiner] searching...");
 
           }
       }
@@ -173,14 +192,14 @@ void sl_button_on_change(const sl_button_t *handle)
       {
           if(handle == &sl_button_btn0)
           {
-              gui_print_log("[coap]: tx ri");
+              gui_print_log("[coap]: send 'B'");
               // send a message with some identifiable component
               coap_client_send_message(otGetInstance(), "right button");
           }
 
           if(handle == &sl_button_btn1)
           {
-              gui_print_log("[coap]: tx le");
+              gui_print_log("[coap]: send 'A'");
               // send a message with some identifiable component
               coap_client_send_message(otGetInstance(), "left button");
           }

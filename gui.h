@@ -71,6 +71,10 @@ void gui_init(void);
 void gui_update(void);
 void gui_button_handler(const sl_button_t *handle);
 void gui_print_log(char *string);
+void gui_print_network_name(const char *string);
+void gui_print_network_channel(uint16_t ch);
+void gui_print_device_role(const char *string);
+void gui_print_ip_addr(char *string);
 
 
 #endif /* GUI_H_ */

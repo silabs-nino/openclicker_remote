@@ -42,6 +42,7 @@
 
 // platform includes
 #include "sl_simple_button_instances.h"
+#include "printf.h"
 
 #include "gui.h"
 
@@ -139,18 +140,9 @@ void gui_init(void)
   GLIB_drawLineH(&glib_context, 0, 11, 127);
 
   // thread info
-  GLIB_drawStringOnLine(&glib_context, "ntwk name",
-                        THREAD_INFO_LINE, GLIB_ALIGN_LEFT,
-                        THREAD_INFO_OFFSET_X, THREAD_INFO_OFFSET_Y,
-                        false);
-  GLIB_drawStringOnLine(&glib_context, "ntwk ch",
-                        THREAD_INFO_LINE + 1, GLIB_ALIGN_LEFT,
-                        THREAD_INFO_OFFSET_X, THREAD_INFO_OFFSET_Y,
-                        false);
-  GLIB_drawStringOnLine(&glib_context, "state",
-                        THREAD_INFO_LINE + 2, GLIB_ALIGN_LEFT,
-                        THREAD_INFO_OFFSET_X, THREAD_INFO_OFFSET_Y,
-                        false);
+//  gui_print_network_name("");
+//  gui_print_network_channel(0);
+//  gui_print_device_role("");
 
   // log divider
   GLIB_drawLineH(&glib_context, 0, 54, 127);
@@ -249,5 +241,78 @@ void gui_print_log(char *string)
   update_display = true;
 }
 
+void gui_print_network_name(const char *string)
+{
+  char temp[20];
+
+  memset(&temp, ' ', 20);
+
+  GLIB_drawStringOnLine(&glib_context, temp,
+                            THREAD_INFO_LINE, GLIB_ALIGN_LEFT,
+                            THREAD_INFO_OFFSET_X, THREAD_INFO_OFFSET_Y,
+                            true);
+
+  snprintf((char *)&temp, 20, "name:  %s", string);
+  temp[19] = '\0';
+
+  GLIB_drawStringOnLine(&glib_context, temp,
+                          THREAD_INFO_LINE, GLIB_ALIGN_LEFT,
+                          THREAD_INFO_OFFSET_X, THREAD_INFO_OFFSET_Y,
+                          false);
+
+  // mark display update needed
+  update_display = true;
+}
+
+void gui_print_network_channel(uint16_t ch)
+{
+  char temp[20];
+
+  memset(&temp, ' ', 20);
+
+  GLIB_drawStringOnLine(&glib_context, temp,
+                            THREAD_INFO_LINE + 1, GLIB_ALIGN_LEFT,
+                            THREAD_INFO_OFFSET_X, THREAD_INFO_OFFSET_Y,
+                            true);
+
+  snprintf((char *)&temp, 20, "ch:    %d", ch);
+  temp[19] = '\0';
+
+  GLIB_drawStringOnLine(&glib_context, temp,
+                          THREAD_INFO_LINE + 1, GLIB_ALIGN_LEFT,
+                          THREAD_INFO_OFFSET_X, THREAD_INFO_OFFSET_Y,
+                          false);
+
+  // mark display update needed
+  update_display = true;
+}
+
+void gui_print_device_role(const char *string)
+{
+  char temp[20];
+
+  memset(&temp, ' ', 20);
+
+  GLIB_drawStringOnLine(&glib_context, temp,
+                            THREAD_INFO_LINE + 2, GLIB_ALIGN_LEFT,
+                            THREAD_INFO_OFFSET_X, THREAD_INFO_OFFSET_Y,
+                            true);
+
+  snprintf((char *)&temp, 20, "state: %s", string);
+  temp[19] = '\0';
+
+  GLIB_drawStringOnLine(&glib_context, temp,
+                          THREAD_INFO_LINE + 2, GLIB_ALIGN_LEFT,
+                          THREAD_INFO_OFFSET_X, THREAD_INFO_OFFSET_Y,
+                          false);
+
+  // mark display update needed
+  update_display = true;
+}
+
+void gui_print_ip_addr(char *string)
+{
+  (void)string;
+}
 
 
