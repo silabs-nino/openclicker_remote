@@ -116,6 +116,8 @@ otError coap_client_send_message(otInstance *aInstance, char* message)
       goto exit;
   }
 
+  printf("message to append: %s, len: %d\r\n", message, strlen(message));
+
   // add message
   error = otMessageAppend(request_message, message, strlen(message));
   if(error)

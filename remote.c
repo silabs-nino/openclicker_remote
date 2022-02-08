@@ -176,12 +176,12 @@ void joiner_callback(otError aError, void *aContext)
       // > thread start
       otError error = otThreadSetEnabled(otGetInstance(), true);
       printf("thread start: %s\r\n", otThreadErrorToString(error));
-      gui_print_log("[joiner]: joined :)");
+      gui_print_log("[joiner] joined :)");
   }
   else
   {
       char temp[21];
-      snprintf((char *)&temp, 21, "[joiner]: %s", otThreadErrorToString(aError));
+      snprintf((char *)&temp, 21, "[joiner] %s", otThreadErrorToString(aError));
       gui_print_log(temp);
   }
 }
@@ -212,7 +212,7 @@ void sl_button_on_change(const sl_button_t *handle)
       {
           if(handle == &sl_button_btn0)
           {
-              gui_print_log("[coap]: send 'B'");
+              gui_print_log("[coap] tx 'B'");
 
               snprintf((char *) &temp, 21, "%s: %c", mac_str, 'B');
 
@@ -222,7 +222,7 @@ void sl_button_on_change(const sl_button_t *handle)
 
           if(handle == &sl_button_btn1)
           {
-              gui_print_log("[coap]: send 'A'");
+              gui_print_log("[coap] tx 'A'");
 
               snprintf((char *) &temp, 21, "%s: %c", mac_str, 'A');
 
