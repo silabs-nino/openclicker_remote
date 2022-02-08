@@ -64,14 +64,31 @@ void openthread_event_handler(otChangedFlags event, void *aContext);
 void joiner_callback(otError aError, void *aContext);
 
 static volatile uint8_t is_commissioned = false;
+static char             mac_str[18];
+
+static void device_set_mac_addr_str(char *str)
+{
+  uint8_t eui64[8];
+
+  // get ieee eui
+  otPlatRadioGetIeeeEui64(otGetInstance(), (uint8_t *) &eui64);
+
+  snprintf(str, 18, "%02X:%02X:%02X:%02X:%02X:%02X", eui64[0], eui64[1], eui64[2], eui64[5], eui64[6], eui64[7]);
+  str[17] = '\0';
+}
+
 
 void remote_init(void)
 {
   otError error;
 
+  // get mac str
+  device_set_mac_addr_str((char *) &mac_str);
+
   // test logging output and application alive state
   printf("Hello from the remote app_init\r\n");
   gui_print_log("hello :)");
+  gui_print_mac_addr((char *) &mac_str);
 
   // delete previous network information
   error = otInstanceErasePersistentInfo(otGetInstance());
@@ -132,12 +149,15 @@ void openthread_event_handler(otChangedFlags event, void *aContext)
       }
   }
 
-  if(event & OT_CHANGED_THREAD_CHANNEL)
+  if((event & OT_CHANGED_THREAD_CHANNEL) || (event & OT_CHANGED_THREAD_NETDATA))
   {
       otOperationalDataset otDataset;
-      otDatasetGetActive(otGetInstance(), &otDataset);
+      otError error = otDatasetGetActive(otGetInstance(), &otDataset);
+      if(!error)
+      {
+          gui_print_network_channel(otDataset.mChannel);
+      }
 
-      gui_print_network_channel(otDataset.mChannel);
   }
 }
 
@@ -194,14 +214,14 @@ void sl_button_on_change(const sl_button_t *handle)
           {
               gui_print_log("[coap]: send 'B'");
               // send a message with some identifiable component
-              coap_client_send_message(otGetInstance(), "right button");
+              coap_client_send_message(otGetInstance(), "B");
           }
 
           if(handle == &sl_button_btn1)
           {
               gui_print_log("[coap]: send 'A'");
               // send a message with some identifiable component
-              coap_client_send_message(otGetInstance(), "left button");
+              coap_client_send_message(otGetInstance(), "A");
           }
       }
   }

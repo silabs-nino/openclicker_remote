@@ -139,11 +139,6 @@ void gui_init(void)
   GLIB_drawLineH(&glib_context, 0,  9, 127);
   GLIB_drawLineH(&glib_context, 0, 11, 127);
 
-  // thread info
-//  gui_print_network_name("");
-//  gui_print_network_channel(0);
-//  gui_print_device_role("");
-
   // log divider
   GLIB_drawLineH(&glib_context, 0, 54, 127);
 
@@ -152,10 +147,10 @@ void gui_init(void)
   GLIB_drawLineH(&glib_context, 0, 101, 127);
 
   // ip address
-  GLIB_drawStringOnLine(&glib_context, "*:8a2e:0370:7334",
-                        ADDR_LINE, GLIB_ALIGN_CENTER,
-                        ADDR_OFFSET_X, ADDR_OFFSET_Y,
-                        false);
+//  GLIB_drawStringOnLine(&glib_context, "*:8a2e:0370:7334",
+//                        ADDR_LINE, GLIB_ALIGN_CENTER,
+//                        ADDR_OFFSET_X, ADDR_OFFSET_Y,
+//                        false);
 
   // button divider
   GLIB_drawLineH(&glib_context, 0, 111, 127);
@@ -169,6 +164,7 @@ void gui_init(void)
 
 void gui_update(void)
 {
+  // only update when needed
   if(update_display)
   {
       DMD_updateDisplay();
@@ -245,13 +241,16 @@ void gui_print_network_name(const char *string)
 {
   char temp[20];
 
+  // blank line
   memset(&temp, ' ', 20);
+  temp[19] = '\0';
 
   GLIB_drawStringOnLine(&glib_context, temp,
                             THREAD_INFO_LINE, GLIB_ALIGN_LEFT,
                             THREAD_INFO_OFFSET_X, THREAD_INFO_OFFSET_Y,
                             true);
 
+  // print network name
   snprintf((char *)&temp, 20, "name:  %s", string);
   temp[19] = '\0';
 
@@ -268,13 +267,16 @@ void gui_print_network_channel(uint16_t ch)
 {
   char temp[20];
 
+  // blank line
   memset(&temp, ' ', 20);
+  temp[19] = '\0';
 
   GLIB_drawStringOnLine(&glib_context, temp,
                             THREAD_INFO_LINE + 1, GLIB_ALIGN_LEFT,
                             THREAD_INFO_OFFSET_X, THREAD_INFO_OFFSET_Y,
                             true);
 
+  // print thread channel
   snprintf((char *)&temp, 20, "ch:    %d", ch);
   temp[19] = '\0';
 
@@ -291,13 +293,16 @@ void gui_print_device_role(const char *string)
 {
   char temp[20];
 
+  // blank line
   memset(&temp, ' ', 20);
+  temp[19] = '\0';
 
   GLIB_drawStringOnLine(&glib_context, temp,
                             THREAD_INFO_LINE + 2, GLIB_ALIGN_LEFT,
                             THREAD_INFO_OFFSET_X, THREAD_INFO_OFFSET_Y,
                             true);
 
+  // print device state
   snprintf((char *)&temp, 20, "state: %s", string);
   temp[19] = '\0';
 
@@ -310,9 +315,27 @@ void gui_print_device_role(const char *string)
   update_display = true;
 }
 
-void gui_print_ip_addr(char *string)
+void gui_print_mac_addr(char *mac_addr)
 {
-  (void)string;
+  char temp[20];
+
+  // blank line
+  memset(&temp, ' ', 20);
+  temp[19] = '\0';
+
+  GLIB_drawStringOnLine(&glib_context, temp,
+                          ADDR_LINE, GLIB_ALIGN_CENTER,
+                          ADDR_OFFSET_X, ADDR_OFFSET_Y,
+                          true);
+
+  // print mac address
+  GLIB_drawStringOnLine(&glib_context, mac_addr,
+                          ADDR_LINE, GLIB_ALIGN_CENTER,
+                          ADDR_OFFSET_X, ADDR_OFFSET_Y,
+                          false);
+
+  // mark display update needed
+  update_display = true;
 }
 
 

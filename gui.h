@@ -74,7 +74,7 @@ void gui_print_log(char *string);
 void gui_print_network_name(const char *string);
 void gui_print_network_channel(uint16_t ch);
 void gui_print_device_role(const char *string);
-void gui_print_ip_addr(char *string);
+void gui_print_mac_addr(char *mac_str);
 
 
 #endif /* GUI_H_ */
