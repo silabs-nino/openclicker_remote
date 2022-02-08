@@ -191,11 +191,13 @@ void joiner_callback(otError aError, void *aContext)
  *****************************************************************************/
 void sl_button_on_change(const sl_button_t *handle)
 {
-  if(!is_commissioned)
+  char temp[21];
+
+  if(sl_button_get_state(handle) == SL_SIMPLE_BUTTON_PRESSED)
   {
-      if(handle == &sl_button_btn0)
+      if(!is_commissioned)
       {
-          if (sl_button_get_state(handle) == SL_SIMPLE_BUTTON_PRESSED)
+          if(handle == &sl_button_btn0)
           {
               otError error;
 
@@ -206,22 +208,26 @@ void sl_button_on_change(const sl_button_t *handle)
 
           }
       }
-  }
-  else {
-      if(sl_button_get_state(handle) == SL_SIMPLE_BUTTON_PRESSED)
+      else
       {
           if(handle == &sl_button_btn0)
           {
               gui_print_log("[coap]: send 'B'");
+
+              snprintf((char *) &temp, 21, "%s: %c", mac_str, 'B');
+
               // send a message with some identifiable component
-              coap_client_send_message(otGetInstance(), "B");
+              coap_client_send_message(otGetInstance(), temp);
           }
 
           if(handle == &sl_button_btn1)
           {
               gui_print_log("[coap]: send 'A'");
+
+              snprintf((char *) &temp, 21, "%s: %c", mac_str, 'A');
+
               // send a message with some identifiable component
-              coap_client_send_message(otGetInstance(), "A");
+              coap_client_send_message(otGetInstance(), temp);
           }
       }
   }

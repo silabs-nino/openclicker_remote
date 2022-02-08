@@ -129,6 +129,10 @@ otError coap_client_send_message(otInstance *aInstance, char* message)
   message_info.mPeerAddr = dest_addr;
   message_info.mPeerPort = OT_DEFAULT_COAP_PORT;
 
+  char dest_addr_str[OT_IP6_ADDRESS_STRING_SIZE];
+  otIp6AddressToString((otIp6Address *) &dest_addr, (char *) &dest_addr_str, OT_IP6_ADDRESS_STRING_SIZE);
+  printf("sending '%s' to %s\r\n", message, dest_addr_str);
+
   // send coap request
   error = otCoapSendRequestWithParameters(aInstance, request_message, &message_info, &coap_client_handler, aInstance, NULL);
   if(error)
