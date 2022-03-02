@@ -45,21 +45,22 @@
 #include "printf.h"
 
 #include "gui.h"
+#include "gui_event_queue.h"
 
 // local functions
-static void display_init(void);
-static void draw_button(const button_t* button, bool pressed);
+static  void display_init(void);
+static  void draw_button(const button_t* button, bool pressed);
 
 // local vars
-static char                     log_buffer[LOG_BUFFER_LEN][DISPLAY_LOG_MAX_STR_LEN + 1];
-static uint8_t                  log_index;
-static const GLIB_Rectangle_t   log_window = {0, 55, 127, 98};
+static  char                     log_buffer[LOG_BUFFER_LEN][DISPLAY_LOG_MAX_STR_LEN + 1];
+static  uint8_t                  log_index;
+static  const GLIB_Rectangle_t   log_window = {0, 55, 127, 98};
 
-static GLIB_Context_t           glib_context;
-static bool                     update_display;
+static  GLIB_Context_t           glib_context;
+static  bool                     update_display;
 
-static const button_t           button_left     = {{ 1, 113,  62, 126}, 'A'};
-static const button_t           button_right    = {{65, 113, 126, 126}, 'B'};
+static  const button_t           button_left     = {{ 1, 113,  62, 126}, 'A'};
+static  const button_t           button_right    = {{65, 113, 126, 126}, 'B'};
 
 
 static void display_init(void)
@@ -128,6 +129,9 @@ void gui_init(void)
 {
   log_index = 0;
 
+  // initialize event queue
+  gui_event_queue_init();
+
   // initialize GLIB handler
   display_init();
 
@@ -146,12 +150,6 @@ void gui_init(void)
   GLIB_drawLineH(&glib_context, 0,  99, 127);
   GLIB_drawLineH(&glib_context, 0, 101, 127);
 
-  // ip address
-//  GLIB_drawStringOnLine(&glib_context, "*:8a2e:0370:7334",
-//                        ADDR_LINE, GLIB_ALIGN_CENTER,
-//                        ADDR_OFFSET_X, ADDR_OFFSET_Y,
-//                        false);
-
   // button divider
   GLIB_drawLineH(&glib_context, 0, 111, 127);
 
@@ -164,6 +162,63 @@ void gui_init(void)
 
 void gui_update(void)
 {
+  sl_status_t status;
+  gui_event_t event;
+
+  // read events from the queue
+  do {
+      status = ring_buffer_get(&gui_event_queue, &event);
+
+      if(status != SL_STATUS_OK)
+      {
+          break;
+      }
+
+      printf("\tflag: %u, msg: %s\r\n", event.flag, event.msg);
+
+      switch(event.flag) {
+        case GUI_EVENT_FLAG_BTN0_PRESSED:
+          draw_button(&button_right, true);
+          break;
+
+        case GUI_EVENT_FLAG_BTN0_RELEASED:
+          draw_button(&button_right, false);
+          break;
+
+        case GUI_EVENT_FLAG_BTN1_PRESSED:
+          draw_button(&button_left, true);
+          break;
+
+        case GUI_EVENT_FLAG_BTN1_RELEASED:
+          draw_button(&button_left, false);
+          break;
+
+        case GUI_EVENT_FLAG_NTWK_NAME:
+          gui_print_network_name((char *)&event.msg);
+          break;
+
+        case GUI_EVENT_FLAG_NTWK_CH:
+          gui_print_network_channel((char *)&event.msg);
+          break;
+
+        case GUI_EVENT_FLAG_NTWK_ADDR:
+          gui_print_mac_addr((char *)&event.msg);
+          break;
+
+        case GUI_EVENT_FLAG_NTWK_ROLE:
+          gui_print_device_role((char *)&event.msg);
+          break;
+
+        case GUI_EVENT_FLAG_LOG:
+          gui_print_log((char *)&event.msg);
+          break;
+
+        default:
+          break;
+      }
+
+  } while (status == SL_STATUS_OK);
+
   // only update when needed
   if(update_display)
   {
@@ -174,22 +229,31 @@ void gui_update(void)
 
 void gui_button_handler(const sl_button_t *handle)
 {
+  gui_event_t event = {
+      .flag = 0,
+      .msg  = {0},
+  };
+
   if (sl_button_get_state(handle) == SL_SIMPLE_BUTTON_PRESSED) {
     if (&sl_button_btn0 == handle) {
-        draw_button(&button_right, true);
+        event.flag = GUI_EVENT_FLAG_BTN0_PRESSED;
+        ring_buffer_add(&gui_event_queue, &event);
     }
 
     if (&sl_button_btn1 == handle) {
-        draw_button(&button_left, true);
+        event.flag = GUI_EVENT_FLAG_BTN1_PRESSED;
+        ring_buffer_add(&gui_event_queue, &event);
     }
   }
   else if (sl_button_get_state(handle) == SL_SIMPLE_BUTTON_RELEASED) {
     if (&sl_button_btn0 == handle) {
-        draw_button(&button_right, false);
+        event.flag = GUI_EVENT_FLAG_BTN0_RELEASED;
+        ring_buffer_add(&gui_event_queue, &event);
     }
 
     if (&sl_button_btn1 == handle) {
-        draw_button(&button_left, false);
+        event.flag = GUI_EVENT_FLAG_BTN1_RELEASED;
+        ring_buffer_add(&gui_event_queue, &event);
     }
   }
 }
@@ -237,7 +301,7 @@ void gui_print_log(char *string)
   update_display = true;
 }
 
-void gui_print_network_name(const char *string)
+void gui_print_network_name(char *string)
 {
   char temp[20];
 
@@ -263,7 +327,7 @@ void gui_print_network_name(const char *string)
   update_display = true;
 }
 
-void gui_print_network_channel(uint16_t ch)
+void gui_print_network_channel(char *ch)
 {
   char temp[20];
 
@@ -277,7 +341,7 @@ void gui_print_network_channel(uint16_t ch)
                             true);
 
   // print thread channel
-  snprintf((char *)&temp, 20, "ch:    %d", ch);
+  snprintf((char *)&temp, 20, "ch:    %s", ch);
   temp[19] = '\0';
 
   GLIB_drawStringOnLine(&glib_context, temp,
@@ -289,7 +353,7 @@ void gui_print_network_channel(uint16_t ch)
   update_display = true;
 }
 
-void gui_print_device_role(const char *string)
+void gui_print_device_role(char *string)
 {
   char temp[20];
 

@@ -55,51 +55,63 @@
 #include "coap_client.h"
 
 #include "gui.h"
+#include "gui_event_queue.h"
 
-
-// declarations
-otInstance *otGetInstance(void);
 
 void openthread_event_handler(otChangedFlags event, void *aContext);
 void joiner_callback(otError aError, void *aContext);
 
 static volatile uint8_t is_commissioned = false;
 static char             mac_str[18];
+static otInstance*          sInstance = NULL;
 
 static void device_set_mac_addr_str(char *str)
 {
   uint8_t eui64[8];
 
   // get ieee eui
-  otPlatRadioGetIeeeEui64(otGetInstance(), (uint8_t *) &eui64);
+  otPlatRadioGetIeeeEui64(sInstance, (uint8_t *) &eui64);
 
   snprintf(str, 18, "%02X:%02X:%02X:%02X:%02X:%02X", eui64[0], eui64[1], eui64[2], eui64[5], eui64[6], eui64[7]);
   str[17] = '\0';
 }
 
 
-void remote_init(void)
+void remote_init(otInstance *instance)
 {
   otError error;
+  gui_event_t gui_event = {
+      .flag = 0,
+      .msg  = {0},
+  };
+
+  // set openthread instance
+  sInstance = instance;
 
   // get mac str
   device_set_mac_addr_str((char *) &mac_str);
 
   // test logging output and application alive state
   printf("Hello from the remote app_init\r\n");
-  gui_print_log("hello :)");
-  gui_print_mac_addr((char *) &mac_str);
+
+  gui_event.flag = GUI_EVENT_FLAG_LOG;
+  snprintf((char *)gui_event.msg, GUI_EVENT_MSG_SIZE, "hello :)");
+  ring_buffer_add(&gui_event_queue, &gui_event);
+
+  gui_event.flag = GUI_EVENT_FLAG_NTWK_ADDR;
+  snprintf((char *)gui_event.msg, GUI_EVENT_MSG_SIZE, (char *)&mac_str);
+  ring_buffer_add(&gui_event_queue, &gui_event);
 
   // delete previous network information
-  error = otInstanceErasePersistentInfo(otGetInstance());
+  error = otInstanceErasePersistentInfo(sInstance);
   printf("erase persistent info: %s\r\n", otThreadErrorToString(error));
 
   // register callback for Thread Stack Events
-  error = otSetStateChangedCallback(otGetInstance(), openthread_event_handler, (void *)otGetInstance());
+  error = otSetStateChangedCallback(sInstance, openthread_event_handler, (void *)sInstance);
   printf("set state changed callback: %s\r\n", otThreadErrorToString(error));
 
   // start network interface
-  error = otIp6SetEnabled(otGetInstance(), true);
+  error = otIp6SetEnabled(sInstance, true);
   printf("enable interface: %s\r\n", otThreadErrorToString(error));
 }
 
@@ -112,35 +124,48 @@ void remote_init(void)
  *****************************************************************************/
 void openthread_event_handler(otChangedFlags event, void *aContext)
 {
-  (void)aContext;
+  gui_event_t gui_event = {
+      .flag = 0,
+      .msg  = {0},
+  };
 
   if(event & OT_CHANGED_THREAD_NETIF_STATE)
   {
-      bool netif_state = otIp6IsEnabled(otGetInstance());
+      bool netif_state = otIp6IsEnabled(aContext);
       printf("network if changed: %d\r\n", netif_state);
       if(netif_state)
       {
           printf("ready for join\r\n");
-          gui_print_log("press 'B' to join");
+
+          gui_event.flag = GUI_EVENT_FLAG_LOG;
+          snprintf((char *)gui_event.msg, GUI_EVENT_MSG_SIZE, "press 'B' to join");
+          ring_buffer_add(&gui_event_queue, &gui_event);
       }
   }
 
   if(event & OT_CHANGED_THREAD_NETWORK_NAME)
   {
-      printf("network name changed: %s\r\n", otThreadGetNetworkName(otGetInstance()));
-      gui_print_network_name(otThreadGetNetworkName(otGetInstance()));
+      printf("network name changed: %s\r\n", otThreadGetNetworkName(aContext));
+
+      gui_event.flag = GUI_EVENT_FLAG_NTWK_NAME;
+      snprintf((char *)gui_event.msg, GUI_EVENT_MSG_SIZE, otThreadGetNetworkName(aContext));
+      ring_buffer_add(&gui_event_queue, &gui_event);
   }
 
   if(event & OT_CHANGED_THREAD_ROLE)
   {
-      otDeviceRole role = otThreadGetDeviceRole(otGetInstance());
+      otDeviceRole role = otThreadGetDeviceRole(aContext);
       printf("Thread Device Role Changed: %s\r\n", otThreadDeviceRoleToString(role));
-      gui_print_device_role(otThreadDeviceRoleToString(role));
+
+      gui_event.flag = GUI_EVENT_FLAG_NTWK_ROLE;
+      snprintf((char *)gui_event.msg, GUI_EVENT_MSG_SIZE, otThreadDeviceRoleToString(role));
+      ring_buffer_add(&gui_event_queue, &gui_event);
+
       if(role != OT_DEVICE_ROLE_DETACHED && role != OT_DEVICE_ROLE_DISABLED)
       {
           if(!is_commissioned)
           {
-              printf("coap client init: %s\r\n", otThreadErrorToString(coap_client_init(otGetInstance())));
+              printf("coap client init: %s\r\n", otThreadErrorToString(coap_client_init(aContext)));
               is_commissioned = true;
           }
       }
@@ -152,10 +177,14 @@ void openthread_event_handler(otChangedFlags event, void *aContext)
   if((event & OT_CHANGED_THREAD_CHANNEL) || (event & OT_CHANGED_THREAD_NETDATA))
   {
       otOperationalDataset otDataset;
-      otError error = otDatasetGetActive(otGetInstance(), &otDataset);
+      otError error = otDatasetGetActive(aContext, &otDataset);
       if(!error)
       {
-          gui_print_network_channel(otDataset.mChannel);
+//          gui_print_network_channel(otDataset.mChannel);
+
+          gui_event.flag = GUI_EVENT_FLAG_NTWK_CH;
+          snprintf((char *)gui_event.msg, GUI_EVENT_MSG_SIZE, "%d", otDataset.mChannel);
+          ring_buffer_add(&gui_event_queue, &gui_event);
       }
 
   }
@@ -166,7 +195,10 @@ void openthread_event_handler(otChangedFlags event, void *aContext)
  *****************************************************************************/
 void joiner_callback(otError aError, void *aContext)
 {
-  (void)aContext;
+  gui_event_t gui_event = {
+      .flag = 0,
+      .msg  = {0},
+  };
 
   printf("joiner_callback event: %s\r\n", otThreadErrorToString(aError));
 
@@ -174,15 +206,19 @@ void joiner_callback(otError aError, void *aContext)
   {
       // successful join, start the thread
       // > thread start
-      otError error = otThreadSetEnabled(otGetInstance(), true);
+      otError error = otThreadSetEnabled(aContext, true);
       printf("thread start: %s\r\n", otThreadErrorToString(error));
-      gui_print_log("[joiner] joined :)");
+
+      gui_event.flag = GUI_EVENT_FLAG_LOG;
+      snprintf((char *)gui_event.msg, GUI_EVENT_MSG_SIZE, "[joiner] joined :)");
+      ring_buffer_add(&gui_event_queue, &gui_event);
+
   }
   else
   {
-      char temp[21];
-      snprintf((char *)&temp, 21, "[joiner] %s", otThreadErrorToString(aError));
-      gui_print_log(temp);
+      gui_event.flag = GUI_EVENT_FLAG_LOG;
+      snprintf((char *)gui_event.msg, GUI_EVENT_MSG_SIZE, "[joiner] %s", otThreadErrorToString(aError));
+      ring_buffer_add(&gui_event_queue, &gui_event);
   }
 }
 
@@ -192,6 +228,10 @@ void joiner_callback(otError aError, void *aContext)
 void sl_button_on_change(const sl_button_t *handle)
 {
   char temp[21];
+  gui_event_t gui_event = {
+      .flag = 0,
+      .msg  = {0},
+  };
 
   if(sl_button_get_state(handle) == SL_SIMPLE_BUTTON_PRESSED)
   {
@@ -202,9 +242,12 @@ void sl_button_on_change(const sl_button_t *handle)
               otError error;
 
               // start joiner
-              error = otJoinerStart(otGetInstance(), JOINER_PSKD, NULL, NULL, NULL, NULL, NULL, joiner_callback, (void*)otGetInstance());
+              error = otJoinerStart(sInstance, JOINER_PSKD, NULL, NULL, NULL, NULL, NULL, joiner_callback, (void*)sInstance);
               printf("start_joiner: %s\r\n", otThreadErrorToString(error));
-              gui_print_log("[joiner] searching...");
+
+              gui_event.flag = GUI_EVENT_FLAG_LOG;
+              snprintf((char *)gui_event.msg, GUI_EVENT_MSG_SIZE, "[joiner] searching...");
+              ring_buffer_add(&gui_event_queue, &gui_event);
 
           }
       }
@@ -212,22 +255,26 @@ void sl_button_on_change(const sl_button_t *handle)
       {
           if(handle == &sl_button_btn0)
           {
-              gui_print_log("[coap] tx 'B'");
+              gui_event.flag = GUI_EVENT_FLAG_LOG;
+              snprintf((char *)gui_event.msg, GUI_EVENT_MSG_SIZE, "[coap] tx 'B'");
+              ring_buffer_add(&gui_event_queue, &gui_event);
 
               snprintf((char *) &temp, 21, "%s: %c", mac_str, 'B');
 
               // send a message with some identifiable component
-              coap_client_send_message(otGetInstance(), temp);
+              coap_client_send_message(sInstance, temp);
           }
 
           if(handle == &sl_button_btn1)
           {
-              gui_print_log("[coap] tx 'A'");
+              gui_event.flag = GUI_EVENT_FLAG_LOG;
+              snprintf((char *)gui_event.msg, GUI_EVENT_MSG_SIZE, "[coap] tx 'A'");
+              ring_buffer_add(&gui_event_queue, &gui_event);
 
               snprintf((char *) &temp, 21, "%s: %c", mac_str, 'A');
 
               // send a message with some identifiable component
-              coap_client_send_message(otGetInstance(), temp);
+              coap_client_send_message(sInstance, temp);
           }
       }
   }
