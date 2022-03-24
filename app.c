@@ -101,7 +101,7 @@ void sl_ot_create_instance(void)
 void app_init(void)
 {
   gui_init();
-  remote_init();
+  remote_init(otGetInstance());
 }
 
 /**************************************************************************//**

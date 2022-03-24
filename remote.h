@@ -37,6 +37,6 @@
 #ifndef REMOTE_H_
 #define REMOTE_H_
 
-void remote_init(void);
+void remote_init(otInstance *instance);
 
 #endif /* REMOTE_H_ */
